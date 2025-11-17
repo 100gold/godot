@@ -239,7 +239,7 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 						for (const NodePath &e_path : sdata->get_state()->exposed_nodes) {
 							Node *ei = node->get_node_or_null(e_path);
 							if (ei) {
-								if (ei->has_meta(META_EXPOSED_IN_OWNER)) {
+								if (ei->get_meta(META_EXPOSED_IN_OWNER, false)) {
 									ei->set_meta(META_EXPOSED_IN_INSTANCE, true);
 								}
 							}
@@ -500,7 +500,7 @@ Node *SceneState::instantiate(GenEditState p_edit_state) const {
 							} else if (n.owner == 0) {
 								// Check whether a node's parent is no longer exposed. This only matters within the Editor.
 								NODE_FROM_ID(nowner, n.owner);
-								if (nowner != parent && parent->get_owner() != ret_nodes[0] && !parent->has_meta(META_EXPOSED_IN_INSTANCE) && !parent->has_meta(META_EXPOSED_IN_OWNER)) {
+								if (nowner != parent && parent->get_owner() != ret_nodes[0] && !parent->get_meta(META_EXPOSED_IN_INSTANCE, false) && !parent->get_meta(META_EXPOSED_IN_OWNER, false)) {
 									bool in_editable_instance = false;
 									if (parent->get_owner()) {
 										NodePath rel_path = ret_nodes[0]->get_path_to(parent->get_owner());
@@ -797,7 +797,7 @@ Error SceneState::_parse_node(Node *p_owner, Node *p_node, int p_parent_idx, Has
 	// - `owned_by_p_owner`: True if the node is directly or indirectly owned by `p_owner`.
 	// - `exposed_node`: True if the node is flagged as exposed via metadata `META_EXPOSED_IN_OWNER`.
 	bool owned_by_p_owner = p_node == p_owner || p_node->get_owner() == p_owner || p_owner->is_editable_instance(p_node->get_owner());
-	bool exposed_node = p_node->has_meta(META_EXPOSED_IN_OWNER);
+	bool exposed_node = p_node->get_meta(META_EXPOSED_IN_OWNER, false);
 
 	if (!owned_by_p_owner && !exposed_node) {
 		if (p_node->has_exposed_nodes()) {
@@ -820,13 +820,13 @@ Error SceneState::_parse_node(Node *p_owner, Node *p_node, int p_parent_idx, Has
 		editable_instances.push_back(p_owner->get_path_to(p_node));
 		// Node is the root of an editable instance.
 		is_editable_instance = true;
-	} else if (p_node->get_owner() && p_owner->is_ancestor_of(p_node->get_owner()) && p_owner->is_editable_instance(p_node->get_owner()) && p_owner->has_meta(META_EXPOSED_IN_OWNER)) {
+	} else if (p_node->get_owner() && p_owner->is_ancestor_of(p_node->get_owner()) && p_owner->is_editable_instance(p_node->get_owner()) && p_owner->get_meta(META_EXPOSED_IN_OWNER, false)) {
 		// Node is part of an editable instance.
 		is_editable_instance = true;
 	}
 
 	// Save the nodes that are chosen as exposed, so they can be restored on load.
-	if (p_node->has_meta(META_MARKED_FOR_EXPOSURE) || (p_node->has_meta(META_EXPOSED_IN_OWNER) && p_node->get_owner() == p_owner)) {
+	if (p_node->get_meta(META_MARKED_FOR_EXPOSURE, false) || (p_node->get_meta(META_EXPOSED_IN_OWNER, false) && p_node->get_owner() == p_owner)) {
 		exposed_nodes.push_back(p_owner->get_path_to(p_node));
 	}
 
@@ -1094,7 +1094,7 @@ Error SceneState::_parse_node(Node *p_owner, Node *p_node, int p_parent_idx, Has
 	bool save_node = nd.properties.size() || nd.groups.size(); // some local properties or groups exist
 	save_node = save_node || p_node == p_owner; // owner is always saved
 	save_node = save_node || (p_node->get_owner() == p_owner && instantiated_by_owner); //part of scene and not instanced
-	save_node = save_node || (p_owner->has_meta(META_MARKED_FOR_EXPOSURE) && nd.properties.size() > 0);
+	save_node = save_node || (p_owner->get_meta(META_MARKED_FOR_EXPOSURE, false) && nd.properties.size() > 0);
 
 	int idx = nodes.size();
 	int parent_node = NO_PARENT_SAVED;
@@ -1139,7 +1139,7 @@ Error SceneState::_parse_connections(Node *p_owner, Node *p_node, HashMap<String
 	// - `owned_by_p_owner`: True if the node is directly or indirectly owned by `p_owner`.
 	// - `exposed_node`: True if the node is flagged as exposed via metadata `META_EXPOSED_IN_OWNER`.
 	bool owned_by_p_owner = p_node == p_owner || p_node->get_owner() == p_owner || p_owner->is_editable_instance(p_node->get_owner());
-	bool exposed_node = p_node->has_meta(META_EXPOSED_IN_OWNER);
+	bool exposed_node = p_node->get_meta(META_EXPOSED_IN_OWNER, false);
 
 	if (!owned_by_p_owner && !exposed_node) {
 		if (p_node->has_exposed_nodes()) {

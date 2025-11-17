@@ -261,7 +261,7 @@ void SceneTreeEditor::_update_ask_before_revoking_node_exposure() {
 
 void SceneTreeEditor::_toggle_node_exposure() {
 	EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
-	bool enabled = revoke_node->has_meta(META_MARKED_FOR_EXPOSURE);
+	bool enabled = revoke_node->get_meta(META_MARKED_FOR_EXPOSURE, false);
 	undo_redo->create_action(enabled ? TTR("Unexpose Node In Scene") : TTR("Expose Node In Scene"));
 	if (revoke_node->get_owner() == get_tree()->get_edited_scene_root()) {
 		if (enabled) {
@@ -322,7 +322,7 @@ void SceneTreeEditor::_update_exposed_nodes(Node *p_node, TreeItem *p_parent, bo
 	for (int i = 0; i < cc; i++) {
 		Node *child = p_node->get_child(i);
 
-		if (child->has_meta(META_EXPOSED_IN_OWNER) || child->has_meta(META_EXPOSED_IN_INSTANCE)) {
+		if (child->get_meta(META_EXPOSED_IN_OWNER, false) || child->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 			_update_node_subtree(child, p_parent, p_force);
 
 			if (HashMap<Node *, CachedNode>::Iterator CI = node_cache.get(child)) {
@@ -357,7 +357,7 @@ void SceneTreeEditor::_update_node_subtree(Node *p_node, TreeItem *p_parent, boo
 	bool part_of_subscene = false;
 
 	if (!display_foreign && p_node->get_owner() != get_scene_node() && p_node != get_scene_node()) {
-		if ((show_enabled_subscene || can_open_instance) && p_node->get_owner() && (get_scene_node()->is_editable_instance(p_node->get_owner()) || (p_node->has_meta(META_EXPOSED_IN_INSTANCE) && p_node->has_meta(META_EXPOSED_IN_OWNER)))) {
+		if ((show_enabled_subscene || can_open_instance) && p_node->get_owner() && (get_scene_node()->is_editable_instance(p_node->get_owner()) || (p_node->get_meta(META_EXPOSED_IN_INSTANCE, false) && p_node->get_meta(META_EXPOSED_IN_OWNER, false)))) {
 			part_of_subscene = true;
 			// Allow.
 		} else if (p_node->has_exposed_nodes()) {
@@ -395,10 +395,10 @@ void SceneTreeEditor::_update_node_subtree(Node *p_node, TreeItem *p_parent, boo
 			p_parent->add_child(item);
 			I->value.removed = false;
 			// Fix index of exposed nodes.
-			if (p_node->has_meta(META_EXPOSED_IN_INSTANCE)) {
+			if (p_node->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 				int final_idx = 0;
 				for (int i = 0; i < p_parent->get_child_count(); i++) {
-					if (p_parent->get_child(i)->has_meta(META_EXPOSED_IN_INSTANCE) && p_parent->get_child(i) != I->value.item) {
+					if (p_parent->get_child(i)->get_meta(META_EXPOSED_IN_INSTANCE, false) && p_parent->get_child(i) != I->value.item) {
 						final_idx++;
 					}
 				}
@@ -611,12 +611,12 @@ void SceneTreeEditor::_update_node(Node *p_node, TreeItem *p_item, bool p_part_o
 			p_item->add_button(0, get_editor_theme_icon(warning_icon), BUTTON_WARNING, false, TTR("Node configuration warning:") + all_warnings);
 		}
 
-		if (p_node->has_meta(META_EXPOSED_IN_OWNER) && p_node->get_owner() == EditorNode::get_singleton()->get_edited_scene()) {
+		if (p_node->get_meta(META_EXPOSED_IN_OWNER, false) && p_node->get_owner() == EditorNode::get_singleton()->get_edited_scene()) {
 			p_item->add_button(0, get_editor_theme_icon(SNAME("SceneExposedNode")), BUTTON_EXPOSED, false, TTR("This node will be exposed in the editor when this scene is instantiated.") + "\n" + TTR("Click to disable this."));
 		} else {
-			if (p_node->has_meta(META_MARKED_FOR_EXPOSURE)) {
+			if (p_node->get_meta(META_MARKED_FOR_EXPOSURE, false)) {
 				p_item->add_button(0, get_editor_theme_icon(SNAME("SceneExposedNode")), BUTTON_EXPOSED, false, TTR("This node has been exposed in the underlying scene.") + "\n" + TTR("This node will be exposed in the editor when this scene is instantiated.") + "\n" + TTR("Click to disable this."));
-			} else if (p_node->has_meta(META_EXPOSED_IN_INSTANCE)) {
+			} else if (p_node->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 				p_item->add_button(0, get_editor_theme_icon(SNAME("SceneExposedNodeInstanced")), BUTTON_EXPOSED, p_node->get_owner() != EditorNode::get_singleton()->get_edited_scene(), TTR("This node has been exposed in the underlying scene."));
 			}
 		}
@@ -884,7 +884,7 @@ void SceneTreeEditor::_move_node_children(HashMap<Node *, CachedNode>::Iterator 
 		TreeItem *TI = item->get_child(i);
 		HashMap<Node *, CachedNode>::Iterator CI = node_cache.find_by_item(TI);
 		Node *n = CI->key;
-		if (TI->has_meta(META_EXPOSED_IN_INSTANCE)) {
+		if (TI->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 			ordered_children.push_back(n);
 		}
 	}
@@ -893,7 +893,7 @@ void SceneTreeEditor::_move_node_children(HashMap<Node *, CachedNode>::Iterator 
 	int cc = node->get_child_count(false);
 	for (int i = 0; i < cc; i++) {
 		Node *child = node->get_child(i, false);
-		if (child->get_owner() == EditorNode::get_singleton()->get_edited_scene() && !child->has_meta(META_EXPOSED_IN_INSTANCE)) {
+		if (child->get_owner() == EditorNode::get_singleton()->get_edited_scene() && !child->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 			ordered_children.push_back(child);
 		}
 	}
@@ -2506,7 +2506,7 @@ HashMap<Node *, SceneTreeEditor::CachedNode>::Iterator SceneTreeEditor::NodeCach
 	if (!p_node) {
 		return HashMap<Node *, CachedNode>::Iterator();
 	}
-	if (p_node->has_meta(META_EXPOSED_IN_INSTANCE)) {
+	if (p_node->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 		p_item->set_meta(META_EXPOSED_IN_INSTANCE, true);
 	}
 	return cache.insert(p_node, CachedNode(p_node, p_item));

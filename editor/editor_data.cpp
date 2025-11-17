@@ -729,7 +729,7 @@ bool EditorData::check_and_update_scene(int p_idx) {
 			}
 
 			// Node is no longer exposed, skip it.
-			if (E->has_meta(META_EXPOSED_IN_OWNER) && !new_node->has_meta(META_EXPOSED_IN_OWNER)) {
+			if (E->get_meta(META_EXPOSED_IN_OWNER, false) && !new_node->get_meta(META_EXPOSED_IN_OWNER, false)) {
 				continue;
 			}
 

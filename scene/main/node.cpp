@@ -2212,14 +2212,14 @@ bool Node::is_unique_name_in_owner() const {
 }
 
 bool Node::has_exposed_nodes(bool p_recursive) {
-	if (has_meta(META_CONTAINS_EXPOSED_NODES)) {
+	if (get_meta(META_CONTAINS_EXPOSED_NODES, false)) {
 		return true;
 	}
 	for (const KeyValue<StringName, Node *> &KV : data.children) {
 		if (!KV.value->data.owner) {
 			continue;
 		}
-		if (KV.value->has_meta(META_EXPOSED_IN_INSTANCE)) {
+		if (KV.value->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 			set_meta(META_CONTAINS_EXPOSED_NODES, true);
 			return true;
 		}
@@ -2249,7 +2249,7 @@ int Node::get_exposed_node_count(Node *p_owner, bool p_recursive) {
 		if (this == p_owner && KV.value->is_part_of_edited_scene() && KV.value->has_exposed_nodes()) {
 			count--;
 		}
-		if (KV.value->has_meta(META_EXPOSED_IN_INSTANCE)) {
+		if (KV.value->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 			count++;
 		}
 		if (p_recursive) {

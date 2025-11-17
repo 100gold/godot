@@ -1532,7 +1532,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 			}
 
 			const List<Node *> full_selection = editor_selection->get_full_selected_node_list();
-			bool enabling = !first_selected->get()->has_meta(META_MARKED_FOR_EXPOSURE);
+			bool enabling = !first_selected->get()->get_meta(META_MARKED_FOR_EXPOSURE, false);
 
 			EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
 			if (enabling) {
@@ -1543,7 +1543,7 @@ void SceneTreeDock::_tool_selected(int p_tool, bool p_confirm_override) {
 
 			for (Node *node : full_selection) {
 				// Only operate on nodes whose state will actually change
-				bool is_exposed = node->has_meta(META_MARKED_FOR_EXPOSURE);
+				bool is_exposed = node->get_meta(META_MARKED_FOR_EXPOSURE, false);
 
 				if (enabling && !is_exposed) {
 					// Only expose nodes that are not already exposed
@@ -2806,7 +2806,7 @@ void SceneTreeDock::_toggle_editable_children(Node *p_node) {
 		for (Node *owned_node : owned) {
 			if (owned_node != p_node && owned_node != edited_scene && owned_node->get_owner() == edited_scene && owned_node->get_parent()->get_owner() != edited_scene) {
 				// Preserve children of exposed nodes
-				if (owned_node->get_parent()->has_meta(META_EXPOSED_IN_OWNER)) {
+				if (owned_node->get_parent()->get_meta(META_EXPOSED_IN_OWNER, false)) {
 					continue;
 				}
 
@@ -3586,7 +3586,7 @@ static bool _is_node_visible(Node *p_node) {
 	if (!p_node->get_owner()) {
 		return false;
 	}
-	if (p_node->get_owner() != EditorNode::get_singleton()->get_edited_scene() && !EditorNode::get_singleton()->get_edited_scene()->is_editable_instance(p_node->get_owner()) && !p_node->has_meta(META_MARKED_FOR_EXPOSURE)) {
+	if (p_node->get_owner() != EditorNode::get_singleton()->get_edited_scene() && !EditorNode::get_singleton()->get_edited_scene()->is_editable_instance(p_node->get_owner()) && !p_node->get_meta(META_MARKED_FOR_EXPOSURE, false)) {
 		return false;
 	}
 
@@ -3624,7 +3624,7 @@ void SceneTreeDock::_normalize_drop(Node *&to_node, int &to_pos, int p_type) {
 			to_node = nullptr;
 			ERR_FAIL_MSG("Cannot perform drop above the root node!");
 		}
-		if (to_node->has_meta(META_EXPOSED_IN_INSTANCE)) {
+		if (to_node->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 			to_node = to_node->get_owner();
 			to_pos = -1;
 		} else {
@@ -3660,7 +3660,7 @@ void SceneTreeDock::_normalize_drop(Node *&to_node, int &to_pos, int p_type) {
 				to_pos = lower_sibling->get_index(false);
 			}
 
-			if (to_node->has_meta(META_EXPOSED_IN_INSTANCE)) {
+			if (to_node->get_meta(META_EXPOSED_IN_INSTANCE, false)) {
 				to_pos = to_node->get_index(false) + 1;
 				to_node = to_node->get_owner();
 			} else {
@@ -4049,7 +4049,7 @@ void SceneTreeDock::_tree_rmb(const Vector2 &p_menu_pos) {
 		}
 		menu->add_icon_check_item(get_editor_theme_icon(SNAME("SceneExposedNode")), TTRC("Expose in Instances"), TOOL_TOGGLE_SCENE_EXPOSE_NODE);
 		menu->set_item_shortcut(menu->get_item_index(TOOL_TOGGLE_SCENE_EXPOSE_NODE), ED_GET_SHORTCUT("scene_tree/toggle_expose_node"));
-		menu->set_item_checked(menu->get_item_index(TOOL_TOGGLE_SCENE_EXPOSE_NODE), node->has_meta(META_MARKED_FOR_EXPOSURE));
+		menu->set_item_checked(menu->get_item_index(TOOL_TOGGLE_SCENE_EXPOSE_NODE), node->get_meta(META_MARKED_FOR_EXPOSURE, false));
 	}
 
 	if (selection.size() == 1) {

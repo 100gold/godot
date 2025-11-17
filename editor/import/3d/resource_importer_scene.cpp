@@ -2781,11 +2781,11 @@ Node *ResourceImporterScene::_generate_meshes(Node *p_node, const Dictionary &p_
 				mesh_node->set_gi_mode(GeometryInstance3D::GI_MODE_STATIC);
 			} break;
 		}
-		if (src_mesh_node->has_meta(META_EXPOSED_IN_OWNER)) {
+		if (src_mesh_node->get_meta(META_EXPOSED_IN_OWNER, false)) {
 			mesh_node->set_meta(META_EXPOSED_IN_OWNER, true);
 		}
 		if (mesh_node->get_owner() != nullptr) {
-			mesh_node->get_owner()->set_meta(META_CONTAINS_EXPOSED_NODES, src_mesh_node->has_meta(META_EXPOSED_IN_OWNER));
+			mesh_node->get_owner()->set_meta(META_CONTAINS_EXPOSED_NODES, src_mesh_node->get_meta(META_EXPOSED_IN_OWNER, false));
 		}
 		mesh_node->set_layer_mask(src_mesh_node->get_layer_mask());
 		mesh_node->set_cast_shadows_setting(src_mesh_node->get_cast_shadows_setting());
