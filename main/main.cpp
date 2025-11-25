@@ -147,6 +147,8 @@
 #endif // TOOLS_ENABLED && !GDSCRIPT_NO_LSP
 #endif // MODULE_GDSCRIPT_ENABLED
 
+#include "modules/theora/video_replay_config.h"
+
 /* Static members */
 
 // Singletons
@@ -212,6 +214,7 @@ static String log_file;
 static bool show_help = false;
 static uint64_t quit_after = 0;
 static OS::ProcessID editor_pid = 0;
+static bool is_video_replay_enabled = false;
 #ifdef TOOLS_ENABLED
 static bool found_project = false;
 static bool recovery_mode = false;
@@ -3645,6 +3648,8 @@ Error Main::setup2(bool p_show_boot_logo) {
 		}
 	}
 
+	is_video_replay_enabled = GLOBAL_GET("video_replay/enabled");
+
 	PackedStringArray extensions;
 	extensions.push_back("gd");
 	if (ClassDB::class_exists("CSharpScript")) {
@@ -4881,6 +4886,10 @@ bool Main::iteration() {
 
 	if (movie_writer) {
 		movie_writer->add_frame();
+	}
+
+	if (is_video_replay_enabled) {
+		VideoReplayConfig::add_frame();
 	}
 
 #ifdef TOOLS_ENABLED

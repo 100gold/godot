@@ -1,5 +1,4 @@
-/**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  replay_config.cpp                                                        */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,67 +27,57 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "core/config/project_settings.h"
-
-#include "video_stream_theora.h"
 #include "video_replay_config.h"
 
-#ifdef TOOLS_ENABLED
-#include "editor/movie_writer_ogv.h"
-#endif
-
-static Ref<ResourceFormatLoaderTheora> resource_loader_theora;
-#ifdef TOOLS_ENABLED
-static MovieWriterOGV *writer_ogv = nullptr;
+#if defined(ENABLE_VIDEO_REPLAY)
+#include "servers/rendering_server.h"
+#include "replay/video_replay.h"
+static VideoReplay* g_video_replay = nullptr;
 #endif
 
 
-void initialize_theora_module(ModuleInitializationLevel p_level) {
-	switch (p_level) {
-		case MODULE_INITIALIZATION_LEVEL_SERVERS: {
-#ifdef TOOLS_ENABLED
-			if (GD_IS_CLASS_ENABLED(MovieWriterOGV)) {
-				writer_ogv = memnew(MovieWriterOGV);
-				MovieWriter::add_writer(writer_ogv);
-			}
-#endif
-			GLOBAL_DEF("video_replay/enabled", false);
-			GLOBAL_DEF(PropertyInfo(Variant::INT, "video_replay/width", PROPERTY_HINT_NONE, ""), 1280);
-			GLOBAL_DEF(PropertyInfo(Variant::INT, "video_replay/height", PROPERTY_HINT_NONE, ""), 720);
-			GLOBAL_DEF(PropertyInfo(Variant::INT, "video_replay/fps", PROPERTY_HINT_NONE, ""), 4);
-
-			GDREGISTER_CLASS(VideoReplayConfig);
-
-		} break;
-
-		case MODULE_INITIALIZATION_LEVEL_SCENE: {
-
-			resource_loader_theora.instantiate();
-			ResourceLoader::add_resource_format_loader(resource_loader_theora, true);
-			GDREGISTER_CLASS(VideoStreamTheora);
-		} break;
-		default:
-			break;
+void VideoReplayConfig::cleanup() {
+#if defined(ENABLE_VIDEO_REPLAY)
+	if (g_video_replay) {
+		memdelete(g_video_replay);
+		g_video_replay = nullptr;
 	}
+#endif
 }
 
-void uninitialize_theora_module(ModuleInitializationLevel p_level) {
-	switch (p_level) {
-		case MODULE_INITIALIZATION_LEVEL_SCENE: {
-			ResourceLoader::remove_resource_format_loader(resource_loader_theora);
-			resource_loader_theora.unref();
-		} break;
 
-		case MODULE_INITIALIZATION_LEVEL_SERVERS: {
-#ifdef TOOLS_ENABLED
-			if (GD_IS_CLASS_ENABLED(MovieWriterOGV)) {
-				memdelete(writer_ogv);
-			}
-#endif
-			VideoReplayConfig::cleanup();
-		} break;
-		default:
-			break;
-	}
+void VideoReplayConfig::_bind_methods() {
+	ClassDB::bind_static_method("VideoReplayConfig", D_METHOD("setup", "output_path"), &VideoReplayConfig::setup);
 }
+
+
+Error VideoReplayConfig::setup(const String& p_output_path) {
+#if defined(ENABLE_VIDEO_REPLAY)
+	if (!g_video_replay) {
+		g_video_replay = memnew(VideoReplay);
+	}
+	return g_video_replay->write_begin(p_output_path);
+#else
+	return ERR_UNAVAILABLE;
+#endif
+}
+
+
+void VideoReplayConfig::add_frame() {
+#if defined(ENABLE_VIDEO_REPLAY)
+	if (!g_video_replay || !g_video_replay->is_initialized) {
+		return;
+	}
+
+	RID main_vp_rid = RenderingServer::get_singleton()->viewport_find_from_screen_attachment(DisplayServer::MAIN_WINDOW_ID);
+	RID main_vp_texture = RenderingServer::get_singleton()->viewport_get_texture(main_vp_rid);
+	Ref<Image> vp_tex = RenderingServer::get_singleton()->texture_2d_get(main_vp_texture);
+	if (RenderingServer::get_singleton()->viewport_is_using_hdr_2d(main_vp_rid)) {
+		vp_tex->convert(Image::FORMAT_RGBA8);
+		vp_tex->linear_to_srgb();
+	}
+
+	g_video_replay->write_frame(vp_tex);
+#endif
+}
+  

@@ -1,5 +1,5 @@
 /**************************************************************************/
-/*  register_types.cpp                                                    */
+/*  video_replay.h                                                          */
 /**************************************************************************/
 /*                         This file is part of:                          */
 /*                             GODOT ENGINE                               */
@@ -28,67 +28,54 @@
 /* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
 /**************************************************************************/
 
-#include "register_types.h"
-#include "core/config/project_settings.h"
+#pragma once
 
-#include "video_stream_theora.h"
-#include "video_replay_config.h"
+#include "servers/movie_writer/movie_writer.h"
 
-#ifdef TOOLS_ENABLED
-#include "editor/movie_writer_ogv.h"
-#endif
-
-static Ref<ResourceFormatLoaderTheora> resource_loader_theora;
-#ifdef TOOLS_ENABLED
-static MovieWriterOGV *writer_ogv = nullptr;
-#endif
+#include <theora/theoraenc.h>
+#include "core/os/thread.h"
+#include "core/os/condition_variable.h"
+#include "core/os/mutex.h"
 
 
-void initialize_theora_module(ModuleInitializationLevel p_level) {
-	switch (p_level) {
-		case MODULE_INITIALIZATION_LEVEL_SERVERS: {
-#ifdef TOOLS_ENABLED
-			if (GD_IS_CLASS_ENABLED(MovieWriterOGV)) {
-				writer_ogv = memnew(MovieWriterOGV);
-				MovieWriter::add_writer(writer_ogv);
-			}
-#endif
-			GLOBAL_DEF("video_replay/enabled", false);
-			GLOBAL_DEF(PropertyInfo(Variant::INT, "video_replay/width", PROPERTY_HINT_NONE, ""), 1280);
-			GLOBAL_DEF(PropertyInfo(Variant::INT, "video_replay/height", PROPERTY_HINT_NONE, ""), 720);
-			GLOBAL_DEF(PropertyInfo(Variant::INT, "video_replay/fps", PROPERTY_HINT_NONE, ""), 4);
+class VideoReplay : public Object {
+	GDCLASS(VideoReplay, Object)
 
-			GDREGISTER_CLASS(VideoReplayConfig);
+	Vector2i target_resolution;
+	int fps;
+	int frame_delay;
 
-		} break;
+	uint64_t last_frame_time = 0;
 
-		case MODULE_INITIALIZATION_LEVEL_SCENE: {
+	Thread* encoder_thread;
+	volatile bool is_working = true;
+	BinaryMutex thread_mutex;
+	List<Ref<Image>> frame_queue;
+	ConditionVariable queue_cvar;
 
-			resource_loader_theora.instantiate();
-			ResourceLoader::add_resource_format_loader(resource_loader_theora, true);
-			GDREGISTER_CLASS(VideoStreamTheora);
-		} break;
-		default:
-			break;
-	}
-}
+	Ref<FileAccess> output_file;
 
-void uninitialize_theora_module(ModuleInitializationLevel p_level) {
-	switch (p_level) {
-		case MODULE_INITIALIZATION_LEVEL_SCENE: {
-			ResourceLoader::remove_resource_format_loader(resource_loader_theora);
-			resource_loader_theora.unref();
-		} break;
+	ogg_uint32_t keyframe_frequency = 64;
 
-		case MODULE_INITIALIZATION_LEVEL_SERVERS: {
-#ifdef TOOLS_ENABLED
-			if (GD_IS_CLASS_ENABLED(MovieWriterOGV)) {
-				memdelete(writer_ogv);
-			}
-#endif
-			VideoReplayConfig::cleanup();
-		} break;
-		default:
-			break;
-	}
-}
+	ogg_stream_state ogg_stream;
+	ogg_packet video_packet;
+	ogg_page video_page;
+
+	th_info theora_info;
+	th_enc_ctx* theora_encoding_context;
+	th_comment theora_comment;
+
+	uint8_t* y, * u, * v;
+	th_ycbcr_buffer ycbcr;
+
+	static void thread_callback(void* p_user);
+	void thread_method();
+	bool process_frame(Ref<Image> frame);
+
+public:
+	bool is_initialized = false;
+
+	Error write_begin(const String& p_output_path);
+	Error write_frame(Ref<Image> p_image);
+	void write_end();
+};

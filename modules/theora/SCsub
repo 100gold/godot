@@ -26,7 +26,7 @@ if env["builtin_libtheora"]:
         "state.c",
     ]
 
-    if env.editor_build:
+    if env.debug_features:
         thirdparty_sources += [
             "analyze.c",
             "encfrag.c",
@@ -108,6 +108,10 @@ env_theora.add_source_files(module_obj, "*.cpp")
 
 if env.editor_build:
     env_theora.add_source_files(module_obj, "editor/*.cpp")
+
+if env.debug_features:
+    env_theora.add_source_files(module_obj, "replay/*.cpp")
+    env_theora.Append(CPPDEFINES=["ENABLE_VIDEO_REPLAY"])
 
 env.modules_sources += module_obj
 
